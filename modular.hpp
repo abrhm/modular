@@ -22,7 +22,7 @@ namespace
 		{}
 
 		std::function<base*()> function;
-		void*				handler;
+		void* handler;
 	};
 };
 
@@ -65,7 +65,19 @@ public:
 	std::unique_ptr<base> create (const std::string& path) const
 	{
 		auto it = modules.find(path);
-		return std::unique_ptr<base>(it->second.function());
+		std::unique_ptr<base> module_instance(it->second.function());
+		// Check version and abort in case of version mismatch
+		if (module_instance->version() >= base::version_min && module_instance->version() <= base::version_max)
+		{
+			return module_instance;
+		}
+		else
+		{
+			std::cerr	<< "(modular) Module version mismatch:\n"
+						<< "Supported version range: " << base::version_min << " - " << base::version_max << '\n'
+						<< path << " version: " << module_instance->version() << '\n';
+			std::abort();
+		}
 	}
 
 private:
@@ -89,8 +101,8 @@ private:
 	modular (const modular&&) = delete;
 	modular& operator= (modular&&) = delete;
 
-	static std::map<std::string, M>	modules;
+	static std::map<std::string, M> modules;
 };
 
 template<typename base>
-std::map<std::string, module<base>>	modular<base>::modules;
+std::map<std::string, module<base>> modular<base>::modules;
