@@ -1,23 +1,27 @@
-#include <string>
+#include <algorithm>
+#include <memory>
+#include <vector>
 #include "base.hpp"
 #include "modular.hpp"
 
 int main(int argc, char* argv[])
 {
-	// Shorten the call
-	const auto& modules = modular<base>::get_instance;
+	// Cache reference to a singleton
+	modular<base>& modules = modular<base>::get_instance();
 
-	std::string e1(argv[1]);
-	std::string e2(argv[2]);
+	// Reserve enough space for the extensions
+	std::vector<std::unique_ptr<base>> extensions;
+	extensions.reserve(argc - 1);
 
-	modules().load(e1);
-	modules().load(e2);
+	// Load and instantiate the extensions
+	for (int i = 1; i < argc; ++i)
+	{
+		modules.load(argv[i]);
+		extensions.push_back(modules.create(argv[i]));
+	}
 
-	std::unique_ptr<base> example1 = modules().create(e1);
-	std::unique_ptr<base> example2 = modules().create(e2);
-
-	example1->init();
-	example2->init();
+	// Call the init method for each extension
+	std::for_each(extensions.begin(), extensions.end(), [](const std::unique_ptr<base>& ext){ ext->init(); });
 
 	return 0;
 }
