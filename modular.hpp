@@ -1,108 +1,97 @@
 #pragma once
-// TODO only include iostream/write errors in debug
-#include <csignal>
 #include <dlfcn.h>
 #include <functional>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 
-constexpr int LOAD_MODE = RTLD_NOW;
 
-// This class should be unreachable from outside
 namespace
 {
-	template<class base>
-	struct module
+	struct module_loader
 	{
-		module (std::function<base*()> f, void* h)
-		: function(f)
-		, handler(h)
-		{}
+		using module_handler = std::unique_ptr<void, std::function<void(void*)>>;
 
-		std::function<base*()> function;
-		void* handler;
-	};
-};
-
-template<class base>
-class modular
-{
-	using M = module<base>;
-
-public:
-	// Get the singleton instance
-	static modular<base>& get_instance()
-	{
-		static modular<base> singleton_instance;
-		return singleton_instance;
-	}
-
-	// Load a library with a given path
-	void load (const std::string& path)
-	{
-		void* handler = dlopen(path.c_str(), LOAD_MODE);
-		if (!handler)
+		static module_handler& get (const std::string& path)
 		{
-			std::cerr << "(modular) Could not open path: " << path << '\n';
-			std::abort();
-		}
-
-		void* ctor = dlsym(handler, base::constructor);
-		if (dlerror() != nullptr)
-		{
-			std::cerr << "(modular) Could not read symbol: " << path << ":" << base::constructor << '\n';
-			dlclose(handler);
-			std::abort();
-		}
-
-		std::function<base*()> ptr = reinterpret_cast<base*(*)()>(ctor);
-		modules.insert(std::pair<std::string, M>(path, M(ptr, handler)));
-	}
-
-	// Create a new object from a mapped library
-	std::unique_ptr<base> create (const std::string& path) const
-	{
-		auto it = modules.find(path);
-		std::unique_ptr<base> module_instance(it->second.function());
-		// Check version and abort in case of version mismatch
-		if (module_instance->version() >= base::version_min && module_instance->version() <= base::version_max)
-		{
-			return module_instance;
-		}
-		else
-		{
-			std::cerr	<< "(modular) Module version mismatch:\n"
-						<< "Supported version range: " << base::version_min << " - " << base::version_max << '\n'
-						<< path << " version: " << module_instance->version() << '\n';
-			std::abort();
-		}
-	}
-
-private:
-	modular (){};
-	~modular ()
-	{
-		for (auto& m : modules)
-		{
-			int error = dlclose(m.second.handler);
-			if (error)
+			auto handler = modules.find(path);
+			if (handler == modules.end())
 			{
-				std::cout << "(modular) Could not close library: " << m.first << '\n';
+				handler = modules.emplace(path, module_handler(dlopen(path.c_str(), LOAD_MODE), dl_close)).first;
 			}
+			return handler->second;
 		}
+
+	private:
+		// dlopen load mode
+		static constexpr int LOAD_MODE = RTLD_NOW;
+
+		static void dl_close (void* handler)
+		{
+			dlclose(handler);
+		}
+
+		static std::map<std::string, module_handler>  modules;
 	};
+	std::map<std::string, module_loader::module_handler> module_loader::modules;
 
-	// Disable copy
-	modular (const modular&) = delete;
-	modular& operator= (const modular&) = delete;
-	// Disable move
-	modular (const modular&&) = delete;
-	modular& operator= (modular&&) = delete;
 
-	static std::map<std::string, M> modules;
-};
+	template<class I>
+	struct _default
+	{
+		static std::unique_ptr<I> create (const std::string& path)
+		{
+			auto func = functions.find(path);
+			if (func == functions.end())
+			{
+				func = functions.emplace(path, reinterpret_cast<I*(*)()>(dlsym(module_loader::get(path).get(), I::default_param))).first;
+			}
+			return std::unique_ptr<I>(func->second());
+		}
+	private:
+		static std::map<std::string, std::function<I*()>> functions;
+	};
+	template<class I>
+	std::map<std::string, std::function<I*()>> _default<I>::functions;
 
-template<typename base>
-std::map<std::string, module<base>> modular<base>::modules;
+
+	template<class I, typename P, typename EP>
+	struct _copy
+	{
+		static std::unique_ptr<I> create (const std::string& path, const P& p, const EP& ep)
+		{
+			auto func = functions.find(path);
+			if (func == functions.end())
+			{
+				func = functions.emplace(path, reinterpret_cast<I*(*)(const P&, const EP&)>(dlsym(module_loader::get(path).get(), I::default_param))).first;
+			}
+			return std::unique_ptr<I>(func->second(p, ep));
+		}
+	private:
+		static std::map<std::string, std::function<I*(const P&, const EP&)>> functions;
+	};
+	template<class I, typename P, typename EP>
+	std::map<std::string, std::function<I*(const P&, const EP&)>> _copy<I, P, EP>::functions;
+}
+
+
+namespace modular
+{
+	// struct interface
+	// {};
+
+	template<class I, typename dummy = char>
+	std::unique_ptr<I> create (const std::string& path, typename std::enable_if<I::enable_default, dummy>::type * = 0)
+	{
+		return _default<I>::create(path);
+	}
+
+	template<class I,
+	typename P = void,
+	typename EP = void,
+	typename dummy = char>
+	std::unique_ptr<I> create (const std::string& path, const P& p, const EP& ep, typename std::enable_if<I::enable_copy, dummy>::type * = 0)
+	{
+		return _copy<I, P, EP>::create(path, p, ep);
+	}
+}
