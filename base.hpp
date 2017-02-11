@@ -1,21 +1,31 @@
 #pragma once
+#include "modular.hpp"
 
-class base
+using namespace modular::interface;
+
+class params
+{};
+
+class extra_params
+{};
+
+class base : public modular_base , public params
 {
 public:
 	base () {};
+
+	using P = params;
+	using EP = extra_params;
+
+	base (P&& other)
+	: params(other)
+	{}
+
 	// Keep this virtual to call the proper destructor
 	virtual ~base () {};
-	virtual void init() const = 0;
-	// Get the inherited class version
-	virtual inline unsigned int version() const = 0;
 
-	// Modular will look for this library symbol in the inherited classes
-	static constexpr char constructor[] = "create";
+	virtual void test () const = 0;
 
-	// Versioning
-	static constexpr unsigned int version_min = 1;
-	static constexpr unsigned int version_max = 1;
+	static constexpr char _move[] = "create";
 };
-// Definition
-constexpr char base::constructor[];
+constexpr char base::_move[];

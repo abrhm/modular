@@ -6,22 +6,16 @@
 
 int main(int argc, char* argv[])
 {
-	// Cache reference to a singleton
-	modular<base>& modules = modular<base>::get_instance();
 
-	// Reserve enough space for the extensions
 	std::vector<std::unique_ptr<base>> extensions;
-	extensions.reserve(argc - 1);
+	extensions.reserve(std::size_t(argc-1));
 
-	// Load and instantiate the extensions
 	for (int i = 1; i < argc; ++i)
 	{
-		modules.load(argv[i]);
-		extensions.push_back(modules.create(argv[i]));
+		extensions.push_back(modular::create<base>(argv[i], params(), extra_params()));
 	}
 
-	// Call the init method for each extension
-	std::for_each(extensions.begin(), extensions.end(), [](const std::unique_ptr<base>& ext){ ext->init(); });
+	std::for_each(extensions.begin(), extensions.end(), [](const std::unique_ptr<base>& ext){ ext->test(); });
 
 	return 0;
 }

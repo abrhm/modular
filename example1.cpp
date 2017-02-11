@@ -1,38 +1,30 @@
 #include <iostream>
-#include <type_traits>
+#include <utility>
 #include "base.hpp"
 
-class example1 : public base {
+using EP = base::EP;
+
+class example1 : public base , public EP {
 public:
-	example1 ()
+	example1 (EP&& ep)
+	: EP(ep)
 	{
 		std::cout << "example1 constructor" << std::endl;
 	}
 
-	virtual ~example1 ()
+	virtual ~example1 () final
 	{
 		std::cout << "example1 destructor" << std::endl;
 	}
 
-	virtual void init () const override
+	virtual void test () const final
 	{
-		std::cout << "example1 init" << std::endl;
+		std::cout << "example1 test" << std::endl;
 	}
-
-	virtual inline unsigned int version() const override
-	{
-		return module_version;
-	}
-
-private:
-	// Version check with static_assert
-	static constexpr unsigned int module_version = 1;
-	static_assert(module_version >= base::version_min && module_version <= base::version_max, "Version mismatch");
 };
 
 extern "C" {
-	base* create() {
-		std::cout << "Create new example1" << std::endl;
-		return new example1;
+	base* create(EP&& ep) {
+		return new example1(std::move(ep));
 	}
 }
