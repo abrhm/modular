@@ -125,6 +125,9 @@ namespace modular
 
 		struct modular_base
 		{
+			using P = void;
+			using EP = void;
+
 			static constexpr char _default[] = "";
 			static constexpr char _copy[] = "";
 			static constexpr char _copy_move[] = "";
@@ -144,8 +147,8 @@ namespace modular
 	}
 
 	template<class I,
-	typename P = void,
-	typename EP = void,
+	typename P = typename I::P,
+	typename EP = typename I::EP,
 	typename dummy = char>
 	std::unique_ptr<I> create (const std::string& path, const P& p, const EP& ep, typename std::enable_if<!std::is_same<decltype(I::_copy), decltype(interface::disable)>::value, dummy>::type * = 0)
 	{
@@ -153,8 +156,8 @@ namespace modular
 	}
 
 	template<class I,
-	typename P = void,
-	typename EP = void,
+	typename P = typename I::P,
+	typename EP = typename I::EP,
 	typename dummy = char>
 	std::unique_ptr<I> create (const std::string& path, const P& p, EP&& ep, typename std::enable_if<!std::is_same<decltype(I::_copy_move), decltype(interface::disable)>::value, dummy>::type * = 0)
 	{
@@ -162,8 +165,8 @@ namespace modular
 	}
 
 	template<class I,
-	typename P = void,
-	typename EP = void,
+	typename P = typename I::P,
+	typename EP = typename I::EP,
 	typename dummy = char>
 	std::unique_ptr<I> create (const std::string& path, P&& p, EP&& ep, typename std::enable_if<!std::is_same<decltype(I::_move), decltype(interface::disable)>::value, dummy>::type * = 0)
 	{
