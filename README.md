@@ -1,7 +1,7 @@
 # modular
 Header only dynamic loading library for classes with the same base class.
 
-Known limitations: Currently only linux/gcc supported.
+Known limitations: Currently only linux platform supported.
 
 Usage:
 ```
