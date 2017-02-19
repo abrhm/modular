@@ -3,7 +3,7 @@ language:
 
 compiler:
   - clang
-  - gcc
+  - g++
 
 sudo:
   - false
