@@ -29,4 +29,4 @@ env:
 script:
   - cmake . -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
   - make
-  - ./example $(pwd)/libexample1.so $(pwd)/libexample2.so
+  - ./example $(pwd)/libexample1.dylib $(pwd)/libexample2.dylib
