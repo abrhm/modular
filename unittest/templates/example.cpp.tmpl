@@ -1,0 +1,30 @@
+#include <iostream>
+#include "base.hpp"
+
+using EP = base::EP;
+
+class example1 : public base , public EP {
+public:
+	example1 ()
+	: EP()
+	{
+	}
+
+	virtual ~example1 () final
+	{
+	}
+
+	virtual void test () const final
+	{
+		std::cout << "${unique}" << std::endl;
+	}
+};
+
+extern "C" {
+% if "_default" in implemented:
+	base* ${implemented["_default"]}()
+	{
+		return new example1();
+	}
+% endif
+}

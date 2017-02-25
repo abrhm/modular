@@ -26,6 +26,10 @@ public:
 
 	virtual void test () const = 0;
 
-	static constexpr char _default[] = "create";
+	% for key, val in implemented.items():
+		static constexpr char ${key}[] = "${val}";
+	% endfor
 };
-constexpr char base::_default[];
+% for key in implemented:
+constexpr char base::${key}[];
+% endfor
