@@ -1,10 +1,13 @@
 # modular
 Header only dynamic loading library for classes with the same base class.
 
-Known limitations: Currently only linux platform supported.
+Supported platforms:
+Linux
+Osx
+Windows (planned)
 
+Unit tests:
 Usage:
 ```
-cmake . && make
-./example <absolute path>/libexample1.so <absolute path>/libexample2.so
+python unittest/run_tests.py
 ```
