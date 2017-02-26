@@ -1,0 +1,12 @@
+PROJECT (${case_name} CXX)
+
+SET(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Werror")
+
+INCLUDE_DIRECTORIES(${project_dir})
+
+% for counter in module_range:
+ADD_LIBRARY(example${counter} SHARED example${counter}.cpp)
+% endfor
+
+ADD_EXECUTABLE(${case_name} main.cpp)
+TARGET_LINK_LIBRARIES(${case_name} dl)
