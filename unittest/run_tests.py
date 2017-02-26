@@ -46,7 +46,7 @@ def generate_modules(params):
   for counter in params['module_range']:
     template = Template(filename=os.path.join(params['templates_dir'], MODULE_TEMPLATE['in']))
     with open(os.path.join(params['case_dir'], MODULE_TEMPLATE['out'].format(counter=counter)), 'w') as outputfile:
-      outputfile.write(template.render(**params, unique=counter))
+      outputfile.write(template.render(unique=counter, **params))
 
 
 def generate_files(params):
