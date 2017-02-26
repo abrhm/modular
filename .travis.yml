@@ -32,4 +32,4 @@ env:
 script:
   - cmake . -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
   - make
-  - python3 unittest/run_tests.py
+  - python unittest/run_tests.py
