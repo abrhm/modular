@@ -18,7 +18,7 @@ addons:
     - g++-5
     - clang-3.6
 
-install: "pip3 install Mako"
+install: "pip install Mako"
   
 
 compiler:
