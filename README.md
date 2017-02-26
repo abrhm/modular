@@ -2,9 +2,9 @@
 Header only dynamic loading library for classes with the same base class.
 
 Supported platforms:
-Linux
-Osx
-Windows (planned)
++ Linux
++ Osx
+- Windows (planned)
 
 Unit tests:
 Usage:
