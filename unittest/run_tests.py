@@ -62,7 +62,7 @@ def get_library_name(name):
   print system
   if system == 'Linux':
     return 'lib' + name.replace('.cpp', '.so')
-  if system == 'darwin':
+  if system == 'Darwin':
     return 'lib' + name.replace('.cpp', '.dylib')
 
 
