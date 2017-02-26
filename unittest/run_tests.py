@@ -59,6 +59,7 @@ def generate_files(params):
 
 def get_library_name(name):
   system = platform.system()
+  print system
   if system == 'Linux':
     return 'lib' + name.replace('.cpp', '.so')
   if system == 'darwin':
