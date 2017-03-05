@@ -10,7 +10,7 @@
 const std::array<std::string, ${len(modules)}> modules =
 {
 	% for module in modules:
-	"${module}",
+	{"${module}"},
 	% endfor
 };
 
