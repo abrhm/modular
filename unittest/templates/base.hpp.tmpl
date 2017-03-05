@@ -17,6 +17,10 @@ public:
 	using P = params;
 	using EP = extra_params;
 
+	base (const P& other)
+	: params(other)
+	{}
+
 	base (P&& other)
 	: params(other)
 	{}
@@ -27,7 +31,7 @@ public:
 	virtual void test () const = 0;
 
 	% for key, val in implemented.items():
-		static constexpr char ${key}[] = "${val}";
+	static constexpr char ${key}[] = "${val}";
 	% endfor
 };
 % for key in implemented:

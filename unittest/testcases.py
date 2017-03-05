@@ -1,5 +1,14 @@
 import itertools
 
+smoke = {
+    "name": "smoke",
+    "module_count": 0,
+    "implemented":
+    {
+        "_default": "create",
+    },
+}
+
 constructors = [
 	{"_default": "create_default"},
 	{"_copy": "create_copy"},
@@ -7,24 +16,23 @@ constructors = [
 	{"_move": "create_move"},
 ]
 
-testcases = [
-  {
-    "name": "smoke",
-    "module_count": 0,
-    "implemented":
-    {
-        "_default": "create",
-    },
-  },
-   {
-    "name": "default",
-    "module_count": 1,
-    "implemented":
-    {
-        "_default": "create",
-    },
-  },
-]
+cases = []
+cases.append(smoke)
+
+for combination in itertools.combinations(constructors, 1):
+	c, = combination
+	for key, value in c.items():
+		cases.append(
+		{
+			"name": "only" + key,
+			"module_count": 1,
+			"implemented": {key: value}
+		})
+
+
+
+
+testcases = cases
 
 # for length in range(1, len(constructors) + 1):
 # for length in range(1, 1):

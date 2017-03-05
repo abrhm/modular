@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cassert>
 #include <dlfcn.h>
 #include <functional>
@@ -14,16 +15,20 @@ namespace
 	struct module_loader
 	{
 		using module_handler = std::unique_ptr<void, std::function<void(void*)>>;
+		using module_map = std::map<std::string, module_handler>;
 
-		static module_handler& get (const std::string& path)
+		static module_map::const_iterator load (const std::string& path)
 		{
-			auto handler = modules.find(path);
-			if (handler == modules.end())
-			{
-				handler = modules.emplace(path, module_handler(dlopen(path.c_str(), LOAD_MODE), dl_close)).first;
-				assert(dlerror() == nullptr);
-			}
-			return handler->second;
+			assert(modules.find(path) == modules.end());
+			const auto handler = modules.emplace(path, module_handler(dlopen(path.c_str(), LOAD_MODE), dl_close)).first;
+			assert(dlerror() == nullptr);
+			return handler;
+		}
+
+		static const module_handler& get (const std::string& path)
+		{
+			module_map::const_iterator it = modules.find(path);
+			return ((it != modules.end()) ? it : load(path))->second;
 		}
 
 	private:
@@ -35,9 +40,9 @@ namespace
 			dlclose(handler);
 		}
 
-		static std::map<std::string, module_handler>  modules;
+		static module_map  modules;
 	};
-	std::map<std::string, module_loader::module_handler> module_loader::modules;
+	module_loader::module_map module_loader::modules;
 
 
 	template<class I>
@@ -171,5 +176,12 @@ namespace modular
 	std::unique_ptr<I> create (const std::string& path, P&& p, EP&& ep, typename std::enable_if<!std::is_same<decltype(I::_move), decltype(interface::disable)>::value, dummy>::type * = 0)
 	{
 		return _move<I, P, EP>::create(path, std::move(p), std::move(ep));
+	}
+
+	template<class T>
+	void load (const T& container)
+	{
+		static_assert(std::is_same<typename T::value_type, std::string>::value, "Module name must be string.");
+		std::for_each(container.begin(), container.end(), [](const std::string& path){ module_loader::load(path); });
 	}
 }

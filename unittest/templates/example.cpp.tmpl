@@ -1,16 +1,22 @@
 #include <iostream>
+#include <utility>
 #include "base.hpp"
 
 using EP = base::EP;
 
-class example1 : public base , public EP {
+class example${unique} : public base , public EP {
 public:
-	example1 ()
+	example${unique} ()
 	: EP()
 	{
 	}
 
-	virtual ~example1 () final
+	example${unique} (const EP& other)
+	: EP(other)
+	{
+	}
+
+	virtual ~example${unique} () final
 	{
 	}
 
@@ -24,7 +30,28 @@ extern "C" {
 % if "_default" in implemented:
 	base* ${implemented["_default"]}()
 	{
-		return new example1();
+		return new example${unique}();
+	}
+% endif
+
+% if "_copy" in implemented:
+	base* ${implemented["_copy"]}(const EP& other)
+	{
+		return new example${unique}(other);
+	}
+% endif
+
+% if "_copy_move" in implemented:
+	base* ${implemented["_copy_move"]}(EP&& other)
+	{
+		return new example${unique}(std::move(other));
+	}
+% endif
+
+% if "_move" in implemented:
+	base* ${implemented["_move"]}(EP&& other)
+	{
+		return new example${unique}(std::move(other));
 	}
 % endif
 }

@@ -1,3 +1,4 @@
+#include <array>
 #include <vector>
 #include <memory>
 #include <iostream>
@@ -6,7 +7,7 @@
 #include "base.hpp"
 #include "modular.hpp"
 
-const std::vector<std::string> modules =
+const std::array<std::string, ${len(modules)}> modules =
 {
 	% for module in modules:
 	"${module}",
@@ -18,10 +19,38 @@ int main()
 	std::vector<std::unique_ptr<base>> extensions;
 	extensions.reserve(modules.size());
 
+	// Loading the modules
+	modular::load(modules);
+
+	// Instanciate the modules
+	% if "_default" in implemented:
 	std::for_each(modules.begin(), modules.end(), [&extensions](const std::string& module_path){
 		extensions.push_back(modular::create<base>(module_path));
 	});
+	% endif
 
+	% if "_copy" in implemented:
+	base::P p;
+	base::EP ep;
+	std::for_each(modules.begin(), modules.end(), [&extensions, &p, &ep](const std::string& module_path){
+		extensions.push_back(modular::create<base>(module_path, p, ep));
+	});
+	% endif
+
+	% if "_copy_move" in implemented:
+	base::P p;
+	std::for_each(modules.begin(), modules.end(), [&extensions, &p](const std::string& module_path){
+		extensions.push_back(modular::create<base>(module_path, p, base::EP()));
+	});
+	% endif
+
+	% if "_move" in implemented:
+	std::for_each(modules.begin(), modules.end(), [&extensions](const std::string& module_path){
+		extensions.push_back(modular::create<base>(module_path, base::P(), base::EP()));
+	});
+	% endif
+
+	// Call module functions
 	std::for_each(extensions.begin(), extensions.end(), [](const std::unique_ptr<base>& ext){
 		ext->test();
 	});
