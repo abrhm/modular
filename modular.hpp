@@ -1,187 +1,77 @@
 #pragma once
-#include <algorithm>
 #include <cassert>
-#include <dlfcn.h>
-#include <functional>
-#include <map>
-#include <memory>
 #include <string>
+#include <dlfcn.h>
+#include <memory>
 #include <map>
-#include <utility>
-
+#include <functional>
+#include <typeinfo>
+#include <iostream>
 
 namespace
 {
 	struct module_loader
 	{
 		using module_handler = std::unique_ptr<void, std::function<void(void*)>>;
-		using module_map = std::map<std::string, module_handler>;
 
-		static module_map::const_iterator load (const std::string& path)
+		static module_handler& load (const std::string& path)
 		{
-			assert(modules.find(path) == modules.end());
-			const auto handler = modules.emplace(path, module_handler(dlopen(path.c_str(), LOAD_MODE), dl_close)).first;
-			assert(dlerror() == nullptr);
-			return handler;
+			auto handler = modules.find(path);
+			if (handler == modules.end())
+			{
+				handler = modules.emplace(
+					path,
+					module_handler(dlopen(path.c_str(), LOAD_MODE), dl_close)
+				).first;
+				assert(dlerror() == nullptr);
+			}
+			return handler->second;
 		}
+		private:
+			static constexpr int LOAD_MODE = RTLD_NOW;
 
-		static const module_handler& get (const std::string& path)
-		{
-			module_map::const_iterator it = modules.find(path);
-			return ((it != modules.end()) ? it : load(path))->second;
-		}
+			static void dl_close (void* handler)
+			{
+				dlclose(handler);
+			}
 
-	private:
-		// dlopen load mode
-		static constexpr int LOAD_MODE = RTLD_NOW;
-
-		static void dl_close (void* handler)
-		{
-			dlclose(handler);
-		}
-
-		static module_map  modules;
+			static std::map<std::string, module_handler> modules;
 	};
-	module_loader::module_map module_loader::modules;
+	std::map<std::string, module_loader::module_handler> module_loader::modules;
 
-
-	template<class I>
-	struct _default
+	template<class B, typename... Args>
+	struct function_loader
 	{
-		static std::unique_ptr<I> create (const std::string& path)
+		using function_type = std::function<B*(Args...)>;
+
+		static std::unique_ptr<B> create (const std::string& path, Args... params)
 		{
+			std::cout << typeid(function_type).name() << std::endl;
+
 			auto func = functions.find(path);
 			if (func == functions.end())
 			{
-				func = functions.emplace(path, reinterpret_cast<I*(*)()>(dlsym(module_loader::get(path).get(), I::_default))).first;
+				func = functions.emplace(
+					path,
+					reinterpret_cast<B*(*)(Args...)>(
+						dlsym(module_loader::load(path).get(), typeid(function_type).name())
+					)
+				).first;
 			}
-			return std::unique_ptr<I>(func->second());
+
+			return std::unique_ptr<B>(func->second(params...));
 		}
 	private:
-		static std::map<std::string, std::function<I*()>> functions;
+		static std::map<std::string, function_type> functions;
 	};
-	template<class I>
-	std::map<std::string, std::function<I*()>> _default<I>::functions;
 
-
-	template<class I, typename P, typename EP>
-	struct _copy
-	{
-		static std::unique_ptr<I> create (const std::string& path, const P& p, const EP& ep)
-		{
-			auto func = functions.find(path);
-			if (func == functions.end())
-			{
-				func = functions.emplace(path, reinterpret_cast<I*(*)(const P&, const EP&)>(dlsym(module_loader::get(path).get(), I::_copy))).first;
-			}
-			return std::unique_ptr<I>(func->second(p, ep));
-		}
-	private:
-		static std::map<std::string, std::function<I*(const P&, const EP&)>> functions;
-	};
-	template<class I, typename P, typename EP>
-	std::map<std::string, std::function<I*(const P&, const EP&)>> _copy<I, P, EP>::functions;
-
-
-	template<class I, typename P, typename EP>
-	struct _copy_move
-	{
-		static std::unique_ptr<I> create (const std::string& path, const P& p, EP&& ep)
-		{
-			auto func = functions.find(path);
-			if (func == functions.end())
-			{
-				func = functions.emplace(path, reinterpret_cast<I*(*)(const P&, EP&&)>(dlsym(module_loader::get(path).get(), I::_copy_move))).first;
-			}
-			return std::unique_ptr<I>(func->second(p, std::move(ep)));
-		}
-	private:
-		static std::map<std::string, std::function<I*(const P&, EP&&)>> functions;
-	};
-	template<class I, typename P, typename EP>
-	std::map<std::string, std::function<I*(const P&, EP&&)>> _copy_move<I, P, EP>::functions;
-
-
-	template<class I, typename P, typename EP>
-	struct _move
-	{
-		static std::unique_ptr<I> create (const std::string& path, P&& p, EP&& ep)
-		{
-			auto func = functions.find(path);
-			if (func == functions.end())
-			{
-				func = functions.emplace(path, reinterpret_cast<I*(*)(P&&, EP&&)>(dlsym(module_loader::get(path).get(), I::_move))).first;
-			}
-			return std::unique_ptr<I>(func->second(std::move(p), std::move(ep)));
-		}
-	private:
-		static std::map<std::string, std::function<I*(P&&, EP&&)>> functions;
-	};
-	template<class I, typename P, typename EP>
-	std::map<std::string, std::function<I*(P&&, EP&&)>> _move<I, P, EP>::functions;
+	template<class B, typename... Args>
+	std::map<std::string, std::function<B*(Args...)>> function_loader<B, Args...>::functions;
 }
 
 
-namespace modular
+template<class B, typename... Args>
+std::unique_ptr<B> create (const std::string& path, Args... params)
 {
-	namespace interface
-	{
-		constexpr char disable[] = "";
-
-		struct modular_base
-		{
-			using P = void;
-			using EP = void;
-
-			static constexpr char _default[] = "";
-			static constexpr char _copy[] = "";
-			static constexpr char _copy_move[] = "";
-			static constexpr char _move[] = "";
-		};
-		constexpr char modular_base::_default[];
-		constexpr char modular_base::_copy[];
-		constexpr char modular_base::_copy_move[];
-		constexpr char modular_base::_move[];
-	}
-
-
-	template<class I, typename dummy = char>
-	std::unique_ptr<I> create (const std::string& path, typename std::enable_if<!std::is_same<decltype(I::_default), decltype(interface::disable)>::value, dummy>::type * = 0)
-	{
-		return _default<I>::create(path);
-	}
-
-	template<class I,
-	typename P = typename I::P,
-	typename EP = typename I::EP,
-	typename dummy = char>
-	std::unique_ptr<I> create (const std::string& path, const P& p, const EP& ep, typename std::enable_if<!std::is_same<decltype(I::_copy), decltype(interface::disable)>::value, dummy>::type * = 0)
-	{
-		return _copy<I, P, EP>::create(path, p, ep);
-	}
-
-	template<class I,
-	typename P = typename I::P,
-	typename EP = typename I::EP,
-	typename dummy = char>
-	std::unique_ptr<I> create (const std::string& path, const P& p, EP&& ep, typename std::enable_if<!std::is_same<decltype(I::_copy_move), decltype(interface::disable)>::value, dummy>::type * = 0)
-	{
-		return _copy_move<I, P, EP>::create(path, p, std::move(ep));
-	}
-
-	template<class I,
-	typename P = typename I::P,
-	typename EP = typename I::EP,
-	typename dummy = char>
-	std::unique_ptr<I> create (const std::string& path, P&& p, EP&& ep, typename std::enable_if<!std::is_same<decltype(I::_move), decltype(interface::disable)>::value, dummy>::type * = 0)
-	{
-		return _move<I, P, EP>::create(path, std::move(p), std::move(ep));
-	}
-
-	template<class T>
-	void load (const T& container)
-	{
-		static_assert(std::is_same<typename T::value_type, std::string>::value, "Module name must be string.");
-		std::for_each(container.begin(), container.end(), [](const std::string& path){ module_loader::load(path); });
-	}
+	return function_loader<B, Args...>::create(path, params...);
 }
